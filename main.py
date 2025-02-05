@@ -1,19 +1,21 @@
-import requests
+import os
+import time
+import logging
+from threading import Thread
+from flask import Flask, jsonify
 import random
 import threading
-import time
+import requests
 from faker import Faker
-from colorama import Fore, init
-from flask import Flask, jsonify
 
-init(autoreset=True)
-fake = Faker()
 app = Flask(__name__)
 
 PROXY_RETRY_ATTEMPTS = 3
 success_count = 0
 fail_count = 0
 lock = threading.Lock()
+
+fake = Faker()
 
 def generate_name():
     return fake.name()
@@ -44,12 +46,12 @@ def get_proxies():
 def send_report():
     global success_count, fail_count
     proxies = get_proxies()
-    
+
     if not proxies:
         with lock:
             fail_count += 1
         return
-    
+
     proxy = random.choice(proxies).strip()
     proxies_dict = {'http': proxy, 'https': proxy}
 
@@ -95,11 +97,11 @@ Thank you for your immediate attention to this matter.""",
             if '<div class="alert alert-success"><b>Thanks for your report&#33;</b>' in response.text:
                 with lock:
                     success_count += 1
-                print(Fore.GREEN + f"✅ Sent: {success_count} | ❌ Failed: {fail_count} | Credit: @NAR2TO")
+                print(f"✅ Sent: {success_count} | ❌ Failed: {fail_count}")
             else:
                 with lock:
                     fail_count += 1
-                print(Fore.RED + f"✅ Sent: {success_count} | ❌ Failed: {fail_count} | Credit: @NAR2TO")
+                print(f"✅ Sent: {success_count} | ❌ Failed: {fail_count}")
             return
         except:
             pass
@@ -107,18 +109,38 @@ Thank you for your immediate attention to this matter.""",
     with lock:
         fail_count += 1
 
-def start_reporting():
+def run_scraper_in_background():
     while True:
         threading.Thread(target=send_report).start()
         time.sleep(0.5)
 
-@app.route('/')
-def status():
+@app.route('/', methods=['GET'])
+def home():
     return jsonify({
         "success_reports": success_count,
         "failed_reports": fail_count
     })
 
+def run():
+    app.run(host="0.0.0.0", port=int(os.getenv('PORT', 8080)))
+
+def keep_alive():
+    t = Thread(target=run)
+    t.daemon = True
+    t.start()
+
+def main():
+    keep_alive()
+    
+    scraper_thread = Thread(target=run_scraper_in_background)
+    scraper_thread.daemon = True  
+    scraper_thread.start()
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        logging.info("Shutting down gracefully...")
+
 if __name__ == "__main__":
-    threading.Thread(target=start_reporting).start()
-    app.run(host="0.0.0.0", port=8080)
+    main()
