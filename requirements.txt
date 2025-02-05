@@ -1,0 +1,7 @@
+requests
+random
+threading
+time
+faker
+colorama
+flask
