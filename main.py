@@ -1,5 +1,4 @@
 import requests
-import random
 import threading
 import time
 from faker import Faker
@@ -22,8 +21,7 @@ def generate_email(name):
     return name.replace(" ", "").lower() + "@gmail.com"
 
 def generate_phone():
-    area_codes = ['212', '310', '415', '323', '818', '646', '202', '617', '773', '305']
-    return f"+1{random.choice(area_codes)}{random.randint(1000000, 9999999)}"
+    return fake.phone_number()
 
 def get_proxies():
     proxy_sources = [
@@ -50,7 +48,7 @@ def send_report():
             fail_count += 1
         return
     
-    proxy = random.choice(proxies).strip()
+    proxy = fake.random_element(elements=proxies).strip()
     proxies_dict = {'http': proxy, 'https': proxy}
 
     name = generate_name()
